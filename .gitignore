@@ -1,0 +1,47 @@
+# Python virtual environment
+venv/
+env/
+ENV/
+.venv/
+.pyenv/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Temporary files
+*.tmp
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Credentials and tokens
+backend/temp/
+backend/temp/credentials.json
+backend/temp/token.pickle
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Test and coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+coverage.xml
+*.cover
+*.py,cover
+
+# Pipenv
+Pipfile.lock
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+.pyre/

@@ -4,6 +4,11 @@ env/
 ENV/
 .venv/
 .pyenv/
+backend/.env
+backend/.env.local
+backend/env/
+backend/ENV/
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

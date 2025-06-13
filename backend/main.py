@@ -1,5 +1,6 @@
 from fastapi import FastAPI
-from backend import auth, email_reader, summarizer,email_sender,voice_api
+from backend.api import email_reader, summarizer,email_sender,voice_api
+from backend.api import auth
   
  
 app = FastAPI()

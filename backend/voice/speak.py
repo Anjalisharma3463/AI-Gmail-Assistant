@@ -1,30 +1,27 @@
-import pyttsx3
+from gtts import gTTS
+import pygame
+import time
+import io 
 
-# Initialize once globally
-engine = pyttsx3.init()
 
-# Configure speech rate and volume
-engine.setProperty('rate', 160)
-engine.setProperty('volume', 1.0)
-
-# Find female voice
-voices = engine.getProperty('voices')
-female_voice = None
-
-for voice in voices:
-    if 'female' in voice.name.lower() or 'female' in voice.id.lower():
-        female_voice = voice.id
-        break
-
-# Fallback: use the second voice if no 'female' found
-if not female_voice and len(voices) > 1:
-    female_voice = voices[1].id
-
-# Set the selected voice
-engine.setProperty('voice', female_voice)
-
-# Speech function
+# Initialize pygame mixer once
+pygame.mixer.init()
+ 
 def speak_text(text):
-    engine.say(text)
-    engine.runAndWait()
+    # Convert text to speech into memory buffer
+    tts = gTTS(text, lang='en-in')
+    mp3_fp = io.BytesIO()
+    tts.write_to_fp(mp3_fp)
+    mp3_fp.seek(0)
+
+    # Save to a temporary in-memory buffer and play
+    pygame.mixer.music.load(mp3_fp)
+    pygame.mixer.music.play()
+
+    while pygame.mixer.music.get_busy():
+        time.sleep(0.1)
+
     return "Speech completed"
+
+# Example usage
+speak_text("Hello Anjali! This is an in-memory female voice, no files needed.")

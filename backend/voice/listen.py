@@ -10,7 +10,8 @@ def listen_and_transcribe():
         audio = r.listen(source)
 
     try:
-        text = r.recognize_google(audio)
+        print("🗣️ Recognizing...")
+        text = r.recognize_google(audio, language='en-in')
         print(f"🗣️ You said: {text}")
         return text
     except sr.UnknownValueError:

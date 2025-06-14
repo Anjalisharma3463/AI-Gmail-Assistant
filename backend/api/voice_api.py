@@ -1,7 +1,7 @@
 from fastapi import APIRouter
-from backend.voice.listen import listen_and_transcribe
+from backend.utils.listen import listen_and_transcribe
 from fastapi import Request
-from backend.voice.speak import speak_text
+from backend.utils.speak import speak_text
  
 router = APIRouter()
 

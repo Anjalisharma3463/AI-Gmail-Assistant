@@ -22,6 +22,4 @@ def speak_text(text):
         time.sleep(0.1)
 
     return "Speech completed"
-
-# Example usage
-speak_text("Hello Anjali! This is an in-memory female voice, no files needed.")
+ 

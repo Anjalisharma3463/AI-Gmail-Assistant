@@ -1,21 +1,22 @@
 import uvicorn
 from fastapi import FastAPI
 
-from backend.routes import auth, email_reader, summarizer, email_sender, voice_api , generate_draft_email
+from backend.routes import auth, email_reader, summarizer, email_sender, voice_api , generate_draft_email, contacts
 
 app = FastAPI()
 
-@app.get("/api/v1")
+@app.get("/")
 def root():
     return {"message": "Speakify backend running ✅"}
 
 # Register all routers with the same prefix
-app.include_router(auth.router, prefix="/api/v1")
-app.include_router(email_reader.router, prefix="/api/v1")
-app.include_router(summarizer.router, prefix="/api/v1")
-app.include_router(email_sender.router, prefix="/api/v1")
-app.include_router(voice_api.router, prefix="/api/v1")
-app.include_router(generate_draft_email.router, prefix="/api/v1")
+app.include_router(auth.router)
+app.include_router(email_reader.router)
+app.include_router(summarizer.router)
+app.include_router(email_sender.router)
+app.include_router(voice_api.router)
+app.include_router(generate_draft_email.router)
+app.include_router(contacts.router)
 
 # Main entry point
 if __name__ == "__main__":

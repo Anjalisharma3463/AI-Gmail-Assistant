@@ -5,10 +5,13 @@ from google.oauth2 import id_token
 from google.auth.transport import requests
 from google.oauth2.credentials import Credentials
 from bson import ObjectId
+
+import sys
 import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 # ✅ Import MongoDB collection
-from db.mongo import get_user_collection
+from backend.db.mongo import get_user_collection
 
 router = APIRouter()
 user_collection = get_user_collection()

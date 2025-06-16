@@ -28,19 +28,21 @@ async def read_emails(
         prompt = f"""
         You are an assistant that helps convert user language into Gmail search queries.
 
-        Rules:
-        - Use Gmail search operators only.
-        - Try to capture multiple keyword variations.
-        - If user is vague, infer helpful words from typical email subjects.
-        - Use OR for multiple possibilities.
-        - Focus on words in subject lines or sender names.
-
         Today's date is {datetime.utcnow().strftime('%Y/%m/%d')}.
+
+        Follow these rules:
+
+        - Use **Gmail search operators** only (e.g., from:, to:, subject:, after:, before:, etc.).
+        - If the user says "I sent", assume the sender is the user → `from:me`
+        - If the user says "sent to [email]" → use `to:[email] from:me`
+        - If the user says "they sent me" → use `from:[email] to:me`
+        - Use **OR** to include variations, like partial names or multiple keywords.
+        - Include email address **and** parts of it (e.g., `anjali OR sharma OR anjalisharma1562005@gmail.com`)
+        - Be smart with ambiguous terms – infer useful subject words.
+        - Just output the Gmail search query – nothing else.
 
         Now convert this user input into a Gmail search query:
         "{user_query}"
-
-        Respond with Gmail search query only.
         """
 
         model = genai.GenerativeModel("gemini-2.0-flash")

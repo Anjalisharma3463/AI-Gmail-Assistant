@@ -57,7 +57,10 @@ def login_callback(request: Request):
             requests.Request()
         )
         user_email = id_info.get("email")
-
+        username = id_info.get("name")
+        pictureurl = id_info.get("picture")
+        print("User email:", user_email)
+        print("Username:", username)
         # ✅ Optional: store in MongoDB
         # users_collection.update_one(
         #     {"email": user_email},
@@ -67,12 +70,15 @@ def login_callback(request: Request):
 
         print("✅ User credentials obtained successfully.")
         print("🔐 Access Token:", user_credentials.token)
-        print("📧 Email:", user_email)
-
+        print("📧 user_email:", user_email)
+        print("👤 Username:", username)
+        print("🖼️ Picture URL:", pictureurl)
         return JSONResponse({
             "message": "Login successful",
-            "email": user_email,
-            "access_token": user_credentials.token
+            "user_email": user_email,
+            "access_token": user_credentials.token,
+            "username": username,
+            "picture": pictureurl
         })
 
     except Exception as e:

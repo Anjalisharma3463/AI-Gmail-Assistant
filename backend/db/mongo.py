@@ -1,10 +1,12 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+MONGO_URL = os.getenv("MONGO_URI")
+client = AsyncIOMotorClient(MONGO_URL)
+db = client["AI-Gmail-Assitant-Database"]
 
-client = AsyncIOMotorClient(MONGO_URI)
-db = client["AI_Gmail_Assistant_DB"]
+def get_user_collection():
+    return db["users"]
 
-users_collection = db["users"]
-contacts_collection = db["contacts"]
+def get_contacts_collection():
+    return db["contacts"]

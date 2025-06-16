@@ -1,8 +1,12 @@
-from fastapi import APIRouter
+
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
 from backend.utils.listen import listen_and_transcribe
-from fastapi import Request
 from backend.utils.speak import speak_text
- 
+from fastapi import APIRouter, Request
+
 router = APIRouter()
 
 @router.get("/voice/listen")

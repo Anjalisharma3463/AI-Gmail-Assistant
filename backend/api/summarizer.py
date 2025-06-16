@@ -6,7 +6,6 @@ import google.generativeai as genai
 
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
 genai.configure(api_key=GEMINI_API_KEY)
 
 router = APIRouter()
@@ -15,15 +14,24 @@ router = APIRouter()
 async def summarize(request: Request):
     try:
         data = await request.json()
-        email_text = data.get("email_text")
 
-        if not email_text:
-            return JSONResponse(content={"error": "No email text provided"}, status_code=400)
+        if not data:
+            return JSONResponse(content={"error": "No data  provided"}, status_code=400)
 
-        prompt = f"Summarize this email in simple terms and in short:\n\n{email_text}"
+        body = data.get("body")
+        to = data.get("to", "recipient@example.com")   
+        subject = data.get("subject", "Summary of Your Email")   
+
+
+        email = {
+            "to": to,
+            "subject": subject,
+            "body": body
+        }
+
+        prompt = f"Summarize this email in simple and short terms:\n\n{email}"
 
         model = genai.GenerativeModel("gemini-2.0-flash")
-
         response = model.generate_content(
             contents=[prompt],
             generation_config=genai.GenerationConfig(
@@ -33,8 +41,15 @@ async def summarize(request: Request):
         )
 
         summary = response.text.strip()
-        print("Gemini response:", summary)
-        return {"summary": summary}
+        print("Gemini Summary:", summary)
+
+        return {
+            "email": {
+                "to": to,
+                "subject": subject,
+                "body": summary
+            }
+        }
 
     except Exception as e:
         print("Gemini error:", e)

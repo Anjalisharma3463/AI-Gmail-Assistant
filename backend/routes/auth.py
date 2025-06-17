@@ -107,8 +107,7 @@ async def login_callback(request: Request):
             "session_token": session_token,
             "email": user_email,
             "username": username,
-            "picture": picture,
-            "access_token":credentials.token
+            "picture": picture
         })
 
     except Exception as e:

@@ -4,26 +4,26 @@ from google_auth_oauthlib.flow import Flow
 from google.oauth2 import id_token
 from google.auth.transport import requests
 from google.oauth2.credentials import Credentials
+from jose import jwt
+from datetime import datetime, timedelta
 from bson import ObjectId
-
-import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+import sys
 
-# ✅ Import MongoDB collection
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from backend.db.mongo import get_user_collection
 
 router = APIRouter()
 user_collection = get_user_collection()
 
-# Allow HTTP for development only
+# Allow HTTP for local testing
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
-# Global temporary store (can replace with database session)
-user_credentials: Credentials = None
-user_email: str = None
+# JWT secret for session generation (store in .env in real app)
+JWT_SECRET = "your_jwt_secret_here"
+JWT_EXPIRATION_MINUTES = 60 * 24 * 7  # 7 days session
 
-# OAuth Flow setup
+# OAuth config
 flow = Flow.from_client_secrets_file(
     "backend/temp/credentials.json",
     scopes=[
@@ -36,59 +36,79 @@ flow = Flow.from_client_secrets_file(
     redirect_uri="http://localhost:8000/login/callback"
 )
 
-# Step 1: Redirect user to Google OAuth page
 @router.get("/login")
-def login():
-    authorization_url, state = flow.authorization_url(
-        access_type='offline',  # to get refresh token
+async def login():
+    # Check if user has logged in before and has a refresh token
+    # This part needs front/backend integration or cookie/session check
+    # For now always prompt consent to ensure first-time refresh_token retrieval
+    auth_url, state = flow.authorization_url(
+        access_type='offline',
+        prompt='select_account',  # ensure refresh_token on first login
         include_granted_scopes='true'
     )
-    return RedirectResponse(authorization_url)
+    return RedirectResponse(auth_url)
 
-
-# Step 2: Handle Google's callback
 @router.get("/login/callback")
 async def login_callback(request: Request):
-    global user_credentials, user_email
-
     try:
-        # 🌐 Exchange authorization code for access token
+        # Step 1: Exchange code for tokens
         flow.fetch_token(authorization_response=str(request.url))
-        user_credentials = flow.credentials
+        credentials = flow.credentials
 
-        # 🔍 Get user info from ID token
+        # Step 2: Extract user info from id_token
         id_info = id_token.verify_oauth2_token(
-            user_credentials.id_token,
-            requests.Request()
+            credentials.id_token, requests.Request()
         )
+
         user_email = id_info.get("email")
         username = id_info.get("name")
-        pictureurl = id_info.get("picture")
+        picture = id_info.get("picture")
 
-        # ✅ Check if user already exists
+        # Step 3: Save user or login
         existing_user = await user_collection.find_one({"email": user_email})
+        user_data = {
+            "email": user_email,
+            "username": username,
+            "picture": picture,
+            "access_token": credentials.token,
+            "refresh_token": credentials.refresh_token,  # May be None if not first time
+            "token_expiry": credentials.expiry.isoformat(),
+            "has_refresh_token": bool(credentials.refresh_token)
+        }
 
         if existing_user:
+            update_data = {
+                "$set": {
+                    "access_token": credentials.token,
+                    "token_expiry": credentials.expiry.isoformat(),
+                }
+            }
+            if credentials.refresh_token:
+                update_data["$set"]["refresh_token"] = credentials.refresh_token
+                update_data["$set"]["has_refresh_token"] = True
+            await user_collection.update_one({"_id": existing_user["_id"]}, update_data)
             user_id = str(existing_user["_id"])
         else:
-            # ➕ Create new user
-            new_user = {
-                "email": user_email,
-                "username": username,
-                "picture": pictureurl,
-                "access_token": user_credentials.token
-            }
-            result = await user_collection.insert_one(new_user)
+            result = await user_collection.insert_one(user_data)
             user_id = str(result.inserted_id)
 
-        # ✅ Return user info and user_id
+        # Step 4: Create JWT session token
+        session_payload = {
+            "user_id": user_id,
+            "email": user_email,
+            "username": username,
+            "exp": datetime.utcnow() + timedelta(minutes=JWT_EXPIRATION_MINUTES)
+        }
+        session_token = jwt.encode(session_payload, JWT_SECRET, algorithm="HS256")
+
         return JSONResponse({
             "message": "Login successful",
             "user_id": user_id,
-            "user_email": user_email,
-            "access_token": user_credentials.token,
+            "session_token": session_token,
+            "email": user_email,
             "username": username,
-            "picture": pictureurl
+            "picture": picture,
+            "access_token":credentials.token
         })
 
     except Exception as e:

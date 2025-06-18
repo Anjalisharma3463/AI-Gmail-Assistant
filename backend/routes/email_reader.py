@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 import google.generativeai as genai
 from datetime import datetime, timedelta
 from backend.utils.google_auth import get_valid_credentials
-load_dotenv()
+load_dotenv(".env.production")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 genai.configure(api_key=GEMINI_API_KEY)
 

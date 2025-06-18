@@ -20,8 +20,7 @@ async def summarize(request: Request):
         user = request.state.user
         username = user["username"]
         logged_in_email = user["email"]
-        print("Logged-in username:", username)
-        print("Logged-in email:", logged_in_email)
+
 
         data = await request.json()
         body = data.get("body", "")

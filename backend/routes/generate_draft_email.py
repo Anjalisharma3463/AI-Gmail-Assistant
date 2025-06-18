@@ -10,7 +10,9 @@ router = APIRouter()
 async def generate_draft_email(request: Request):
     data = await request.json()
     user_prompt = data.get("prompt")
-    user_name = "Swati"  # you can load this from session or database
+
+    user = request.state.user
+    username = user["username"]
     if not user_prompt:
         return JSONResponse(content={"error": "Missing prompt"}, status_code=400)
 
@@ -53,8 +55,8 @@ async def generate_draft_email(request: Request):
             - If the name is unclear, use a neutral salutation like "Hello," or "Hi there,".
         - A message body in the **inferred tone**
         - A proper closing (like:
-            - "Sincerely," or "Regards, {user_name}" for professional
-            - "Take care," or "Cheers, {user_name}" for casual)
+            - "Sincerely," or "Regards, {username}" for professional
+            - "Take care," or "Cheers, {username}" for casual)
 
         4. {character_instruction}
 

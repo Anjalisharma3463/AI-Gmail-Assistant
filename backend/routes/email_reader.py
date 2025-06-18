@@ -7,7 +7,7 @@ import os
 from dotenv import load_dotenv
 import google.generativeai as genai
 from datetime import datetime
-
+from backend.utils.google_auth import get_valid_credentials
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 genai.configure(api_key=GEMINI_API_KEY)
@@ -16,14 +16,17 @@ router = APIRouter()
 
 
 @router.get("/read_emails")
-async def read_emails(
-    token: str = Query(default=None),
-    user_query: str = Query(default="Find mails that talk about joining instructions or orientation from college")
-):
-    if not token:
-        return JSONResponse(content={"error": "User not authenticated"}, status_code=401)
+async def read_emails(request: Request):
 
     try:
+        data = await request.json()
+        user_query = data.get("user_query", "Find mails that talk about joining instructions or orientation from college")
+        user = request.state.user
+        user_email = user["email"]
+
+        # ✅ Get valid Google credentials (auto-refreshes if expired)
+        creds = await get_valid_credentials(user_email)
+        print('creds',creds)
         # Step 1: Generate Gmail query using Gemini
         prompt = f"""
         You are an assistant that helps convert user language into Gmail search queries.
@@ -57,7 +60,7 @@ async def read_emails(
         print("Gmail Query from Gemini:", gmail_query)
 
         # Step 2: Gmail API call using the generated query
-        creds = Credentials(token=token)
+
         service = build('gmail', 'v1', credentials=creds)
         result = service.users().messages().list(userId='me', q=gmail_query).execute()
 

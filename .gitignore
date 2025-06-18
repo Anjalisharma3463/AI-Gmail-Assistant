@@ -33,7 +33,7 @@ backend/temp/credentials.json
 backend/temp/token.pickle
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
-
+test.py
 # Test and coverage reports
 htmlcov/
 .tox/

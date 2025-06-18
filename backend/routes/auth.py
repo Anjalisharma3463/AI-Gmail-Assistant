@@ -8,6 +8,10 @@ from datetime import datetime, timedelta
 from bson import ObjectId
 import os
 import sys
+from dotenv import load_dotenv
+load_dotenv()
+
+
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from backend.db.mongo import get_user_collection
@@ -19,12 +23,24 @@ user_collection = get_user_collection()
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
 # JWT secret for session generation (store securely in .env)
-JWT_SECRET = "your_jwt_secret_here"
-JWT_EXPIRATION_MINUTES = 60 * 24 * 7  # 7 days
+JWT_SECRET = os.getenv("JWT_SECRET")
+JWT_EXPIRATION_MINUTES = int(os.getenv("JWT_EXPIRATION_MINUTES", "10080"))
+
 
 # OAuth config
-flow = Flow.from_client_secrets_file(
-    "backend/temp/credentials.json",
+
+flow = Flow.from_client_config(
+    {
+        "web": {
+            "client_id": os.getenv("GOOGLE_CLIENT_ID"),
+            "project_id": os.getenv("GOOGLE_PROJECT_ID"),
+            "auth_uri": os.getenv("GOOGLE_AUTH_URI"),
+            "token_uri": os.getenv("GOOGLE_TOKEN_URI"),
+            "auth_provider_x509_cert_url": os.getenv("GOOGLE_AUTH_CERT_URL"),
+            "client_secret": os.getenv("GOOGLE_CLIENT_SECRET"),
+            "redirect_uris": [os.getenv("GOOGLE_REDIRECT_URI")]
+        }
+    },
     scopes=[
         'https://www.googleapis.com/auth/gmail.readonly',
         'https://www.googleapis.com/auth/gmail.send',
@@ -32,9 +48,8 @@ flow = Flow.from_client_secrets_file(
         'https://www.googleapis.com/auth/userinfo.profile',
         'openid'
     ],
-    redirect_uri="http://localhost:8000/login/callback"
+    redirect_uri=os.getenv("GOOGLE_REDIRECT_URI")
 )
-
 @router.get("/login")
 async def login():
     # First-time login: Google will provide refresh_token if not previously granted

@@ -8,6 +8,10 @@ backend/.env
 backend/.env.local
 backend/env/
 backend/ENV/
+# Ignore all env files by default
+.env*
+# But do NOT ignore .env.example
+!.env.example
 
 
 # Byte-compiled / optimized / DLL files
@@ -49,4 +53,4 @@ Pipfile.lock
 # MyPy
 .mypy_cache/
 .dmypy.json
-.pyre/
+.pyre/.env

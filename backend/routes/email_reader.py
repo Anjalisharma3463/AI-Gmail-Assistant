@@ -81,31 +81,41 @@ async def read_emails(request: Request):
 
         print("Gmail Query from Gemini:", gmail_query)
 
-        # 📥 Substitute contact names with their emails
-        contact_collection = get_contacts_collection()
-        all_contacts = await contact_collection.find({"user_id": ObjectId(user_id)}).to_list(length=100)
+        # ⛔️ Skip DB lookup if any email ID is already in the query
+        if re.search(r'(from|to):\S+@\S+', gmail_query):
+            print("Email address found in query — skipping contact substitution.")
+        else:
+            # 📥 Substitute contact names with their emails
+            contact_collection = get_contacts_collection()
+            all_contacts = await contact_collection.find({"user_id": ObjectId(user_id)}).to_list(length=100)
+            print("Contacts found from database:", all_contacts)
 
-        print("contacts found from database : ", all_contacts)
+        matched = False
 
-        # Replace contact names with emails in Gmail query
         for contact in all_contacts:
-            contact_name = contact["name"].lower()
+            contact_name = contact["name"].lower().strip()
             contact_email = contact["email"]
 
-            # Full name
-            gmail_query = re.sub(rf'from:\(?{re.escape(contact_name)}\)?', f'from:{contact_email}', gmail_query, flags=re.IGNORECASE)
-            gmail_query = re.sub(rf'to:\(?{re.escape(contact_name)}\)?', f'to:{contact_email}', gmail_query, flags=re.IGNORECASE)
+            # Remove quotes from gmail_query for safer matching
+            gmail_query = gmail_query.replace('"', '')
 
-            # Each part of name
-            for part in contact_name.split():
-                gmail_query = re.sub(rf'from:\(?{re.escape(part)}\)?', f'from:{contact_email}', gmail_query, flags=re.IGNORECASE)
-                gmail_query = re.sub(rf'to:\(?{re.escape(part)}\)?', f'to:{contact_email}', gmail_query, flags=re.IGNORECASE)
+            # Match full or partial name
+            if contact_name in gmail_query.lower() or any(part in gmail_query.lower() for part in contact_name.split()):
+                matched = True
+                for part in contact_name.split():
+                    gmail_query = re.sub(rf'(?<=from:)\s*{re.escape(part)}\b', contact_email, gmail_query, flags=re.IGNORECASE)
+                    gmail_query = re.sub(rf'(?<=to:)\s*{re.escape(part)}\b', contact_email, gmail_query, flags=re.IGNORECASE)
 
-        # ✅ Wrap OR queries in parentheses
+            # Final check: if no name part matched at all
+            if not matched:
+                return JSONResponse(
+                    content={"error": "Name not found in contacts. Please provide the email address of the person."},
+                    status_code=400
+                )
+
         gmail_query = re.sub(r'from:me to:([^\s]+) OR from:\1 to:me', r'(from:me to:\1) OR (from:\1 to:me)', gmail_query)
 
         print("Final Gmail Query after contact substitution:", gmail_query)
-
 
         service = build('gmail', 'v1', credentials=creds)
         result = service.users().messages().list(userId='me', q=gmail_query).execute()
@@ -123,6 +133,7 @@ async def read_emails(request: Request):
             subject = next((h['value'] for h in headers if h['name'] == 'Subject'), '')
             sender = next((h['value'] for h in headers if h['name'] == 'From'), '')
             date = next((h['value'] for h in headers if h['name'] == 'Date'), '')
+            receiver = next((h['value'] for h in headers if h['name'] == 'To'), '')
             snippet = msg_data.get("snippet", "")
 
             body = ""
@@ -140,6 +151,7 @@ async def read_emails(request: Request):
             email_summaries.append({
                 "id": msg['id'],
                 "sender": sender,
+                "receiver": receiver,
                 "subject": subject,
                 "date": date,
                 "snippet": snippet,

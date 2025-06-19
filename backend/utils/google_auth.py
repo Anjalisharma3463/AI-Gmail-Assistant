@@ -4,6 +4,9 @@ from google.auth.exceptions import RefreshError
 from datetime import datetime
 from backend.db.mongo import get_user_collection
 import os
+from dotenv import load_dotenv
+
+load_dotenv(".env.production")
 
 user_collection = get_user_collection()
 

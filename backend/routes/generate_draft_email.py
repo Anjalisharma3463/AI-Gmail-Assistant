@@ -1,9 +1,12 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse 
+from backend.db.mongo import get_contacts_collection   
 import os
 import json
 import re
+from dotenv import load_dotenv
 
+load_dotenv(".env.production")
 router = APIRouter()
 
 @router.post("/generate_draft_email")
@@ -13,6 +16,8 @@ async def generate_draft_email(request: Request):
 
     user = request.state.user
     username = user["username"]
+    user_id = user["user_id"]  
+
     if not user_prompt:
         return JSONResponse(content={"error": "Missing prompt"}, status_code=400)
 
@@ -24,7 +29,6 @@ async def generate_draft_email(request: Request):
         match = re.search(r"(?:in|within|of)\s+(\d{2,4})\s*characters", user_prompt.lower())
         char_limit = int(match.group(1)) if match else None
 
-        # ✍️ Gemini instruction for strict character count
         character_instruction = (
             f"- The email body must be exactly {char_limit} characters long. Be as close as possible without going under. Do not exceed or fall short significantly." 
             if char_limit 
@@ -33,62 +37,76 @@ async def generate_draft_email(request: Request):
 
         model = genai.GenerativeModel("gemini-2.0-flash")
 
+        # 🔥 Ask Gemini to extract recipient name as well
         response = model.generate_content(f"""
         You are a smart and emotionally aware email writing assistant. The user may give vague instructions and may optionally request a specific email length (like "write in 200 characters").
 
         Your responsibilities:
 
-        1. First, **infer the tone** based on relationship:
+        1. **Infer tone** based on context:
         - If user mentions words like **"friend"**, "buddy", "bro", etc → use a **casual** tone
-        - If user mentions **"HR"**, "client", "manager", "project", "interview", etc → use a **professional** tone
+        - If user mentions **"HR"**, "client", "manager", "project", "interview"**, etc → use a **professional** tone
 
-        2. Extract strictly and return this exact JSON:
+        2. **Extract recipient details**:
+        - Try to extract **recipient name** from the user prompt. If not found, use empty string.
+        - Use recipient name to personalize salutation.
+        - Recipient **email address must be included by the user** in the prompt.
+
+        3. **Respond in this exact JSON format**:
         {{
         "to": "recipient's email address (must be present)",
+        "name": "Recipient name (if found, else empty string)",
         "subject": "a short, relevant subject line",
-        "message": "email body with proper structure"
+        "message": "email body with salutation, message, and signature"
         }}
 
-        3. The email body must always contain:
+        4. **Email structure** must always include:
         - A salutation:
-            - Use "Dear [Name]," or "Hey [Name]," if the recipient's name is mentioned or can be inferred.
-            - If the name is unclear, use a neutral salutation like "Hello," or "Hi there,".
+            - If name is available: "Dear [Name]," or "Hey [Name],"
+            - If name not available: fallback to "Hello," or "Hi there,"
         - A message body in the **inferred tone**
-        - A proper closing (like:
+        - A proper closing:
             - "Sincerely," or "Regards, {username}" for professional
-            - "Take care," or "Cheers, {username}" for casual)
+            - "Take care," or "Cheers, {username}" for casual
 
-        4. {character_instruction}
+        5. {character_instruction}
 
-        5. ✨ If the user includes any personal contact details in the prompt (like phone number, address, designation, etc.), add those at the end of the email body in a professional format — but only if provided. Do not fabricate them.
+        6. ✨ If user includes contact info (phone number, address, job title, etc.), add it at the end in professional format — but only if present. Do not make anything up.
 
-        ⚠️ If recipient email is missing, respond ONLY with:
+        7. ⚠️ If **recipient email** is missing, respond ONLY with:
         {{
         "error": "Recipient email address is missing. Please provide a valid email."
         }}
 
-        Rules:
-        - The email must sound ready to send.
-        - Do not leave any placeholders, brackets, or incomplete parts.
-        - Respond in plain JSON only. No markdown, no comments.
+        **Rules:**
+        - Output must be final, polished, and ready to send.
+        - Do not include any placeholders or incomplete parts.
+        - ⚠️ **Respond strictly with plain JSON only** — no markdown, no comments, no explanations, no code blocks.
 
-        ⚠️ Your output MUST be **plain JSON only**, no markdown, no code blocks, and no extra text.
-
-        User instruction:
+        User Prompt:
         \"\"\"{user_prompt}\"\"\"
         """)
 
+
         gemini_response = response.text.strip()
 
-        # 🧼 Clean response if backticks or ```json
         if gemini_response.startswith("```"):
             gemini_response = re.sub(r"^```json|^```|```$", "", gemini_response.strip(), flags=re.IGNORECASE).strip()
 
         email_data = json.loads(gemini_response)
 
-        # 🔁 If Gemini returns error message
-        if "error" in email_data:
-            return JSONResponse(content=email_data, status_code=400)
+        recipient_name = email_data.get("name", "").strip().lower()
+        if not recipient_name:
+            return JSONResponse(content={"error": "Recipient email address is missing. Please provide a valid email."}, status_code=400)
+
+        # 🔍 Match with contact collection
+        contact_collection = get_contacts_collection()
+        contact_doc = await contact_collection.find_one({"name": {"$regex": f"^{recipient_name}$", "$options": "i"}, "user_id": user_id})
+
+        if not contact_doc:
+            return JSONResponse(content={"error": "Recipient email address is missing. Please provide a valid email."}, status_code=400)
+
+        email_data["to"] = contact_doc["email"]
 
         return JSONResponse(content={
             "status": "draft_generated",

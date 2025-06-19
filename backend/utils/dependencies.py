@@ -5,9 +5,10 @@ from jose import jwt, JWTError
 from datetime import datetime
 import os
 
-# Store this in .env or use dotenv
-JWT_SECRET = "your_jwt_secret_here"
+from dotenv import load_dotenv
 
+load_dotenv(".env.production")
+JWT_SECRET = os.getenv("JWT_SECRET")
 async def get_current_user(request: Request):
     # Get token from Authorization header (Bearer <token>)
     auth_header = request.headers.get("Authorization")
@@ -16,7 +17,7 @@ async def get_current_user(request: Request):
         raise HTTPException(status_code=401, detail="Unauthorized: No token provided")
 
     token = auth_header.split(" ")[1]
-
+    print(f"Received token: {token}")
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
         exp = payload.get("exp")

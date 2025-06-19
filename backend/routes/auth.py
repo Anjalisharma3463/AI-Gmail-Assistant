@@ -9,9 +9,8 @@ from bson import ObjectId
 import os
 import sys
 from dotenv import load_dotenv
-load_dotenv()
 
-
+load_dotenv(".env.production")
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from backend.db.mongo import get_user_collection

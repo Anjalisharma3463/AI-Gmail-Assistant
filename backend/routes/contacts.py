@@ -23,6 +23,10 @@ async def save_contact(request: Request):
     username = user["username"]
     user_id = user["user_id"]
     logged_in_email = user["email"]
+   
+    name = request.get("name")
+    email = request.get("email")
+
     print("Logged-in username:", username)
     print("Logged-in email:", logged_in_email)
     if not all([user_id, username, logged_in_email]):
@@ -30,8 +34,8 @@ async def save_contact(request: Request):
 
     new_contact = {
         "user_id": ObjectId(user_id),
-        "name": username,
-        "email": logged_in_email
+        "name": name,
+        "email": email
     }
 
     result = await contacts_collection.insert_one(new_contact)

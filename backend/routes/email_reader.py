@@ -8,30 +8,35 @@ from dotenv import load_dotenv
 import google.generativeai as genai
 from datetime import datetime, timedelta
 from backend.utils.google_auth import get_valid_credentials
+from backend.db.mongo import get_contacts_collection
+import re
+from bson import ObjectId
+
 load_dotenv(".env.production")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 genai.configure(api_key=GEMINI_API_KEY)
 
 router = APIRouter()
 
-
 @router.post("/read_emails")
 async def read_emails(request: Request):
-
     try:
         data = await request.json()
         user_query = data.get("user_query", "Find mails that talk about joining instructions or orientation from college")
         user = request.state.user
         user_email = user["email"]
-         
-        # ✅ Get valid Google credentials (auto-refreshes if expired)
+        user_id = user["user_id"]
+
         creds = await get_valid_credentials(user_email)
-        print('creds',creds)
-        # Step 1: Generate Gmail query using Gemini
+        print('creds', creds)
+
+        today = datetime.utcnow().date()
+        tomorrow = today + timedelta(days=1)
+
         prompt = f"""
         You are an intelligent assistant that converts **natural language email requests** into **Gmail search queries** using Gmail’s advanced search operators.
 
-        📅 Today's date is: {datetime.utcnow().strftime('%Y/%m/%d')}
+        📅 Today's date is: {today.strftime('%Y/%m/%d')}
 
         🎯 Your task:
         Understand what the user wants to find in their Gmail account and return a valid Gmail search query string. No explanation — just the query.
@@ -43,55 +48,18 @@ async def read_emails(request: Request):
         4. ✅ If user says “sent to [person/email]” → use: `to:[person] from:me`
         5. ✅ If user says “received from [person/email]” → use: `from:[person] to:me`
         6. ❓ If sender/recipient is unclear → default to `to:me`
-        7. 🔁 For keyword-based searches (like “instagram”, “meeting”, “OTP”) use:
-        - **Multiple keyword combinations using `OR`**
-        - Search both subject and body (e.g. `subject:instagram OR body:instagram`)
-        8. 🕐 For time-based queries (e.g. “last week”, “yesterday”) infer `after:` and `before:` based on today’s date
-        9. 💬 Use wildcards, partial matches, and known email categories like:
-        - `category:promotions`, `category:social`, `filename:pdf`, `is:important`, etc.
+        7. 🔁 For keyword-based searches use:
+        - subject:keyword OR body:keyword
+        8. 🕐 For time-based queries like "today", use:
+        - `after:{today.strftime('%Y/%m/%d')} before:{tomorrow.strftime('%Y/%m/%d')}`
+        9. 💬 Use `is:unread` if query says unread
         10. ❌ Never include explanation — output only the final **Gmail query string**
-
-        ---
-
-        📌 Common Email Types and How to Handle:
-
-        - **Instagram / social media** → subject:instagram OR subject:"follow request" OR body:instagram
-        - **Meeting invites / links** → subject:invite OR subject:meeting OR body:meet.google.com OR body:zoom.us
-        - **College info** → subject:college OR subject:admission OR body:orientation
-        - **Job / resume** → subject:resume OR subject:job OR filename:resume.pdf
-        - **OTP / verification** → subject:OTP OR subject:code OR body:verification
-        - **Newsletters** → category:promotions OR subject:newsletter
-        - **Bills / payments** → subject:payment OR subject:invoice OR subject:bill
-        - **Important alerts** → is:important OR subject:alert
-
-        ---
-
-        🧪 Examples:
-
-        Input: "show me emails about instagram follow requests"
-        Output: to:me subject:instagram OR subject:"follow request" OR body:instagram OR body:insta
-
-        Input: "emails I sent to my friend Anjali"
-        Output: to:anjali from:me
-
-        Input: "emails I got from college about orientation"
-        Output: from:* to:me subject:college OR subject:joining OR subject:orientation OR body:college
-
-        Input: "resume emails from recruiters"
-        Output: to:me subject:resume OR subject:job OR from:recruiter OR filename:resume.pdf
-
-        Input: "OTP I received yesterday"
-        Output: to:me subject:OTP OR subject:code OR body:verification after:{(datetime.utcnow() - timedelta(days=1)).strftime('%Y/%m/%d')}
-
-        Input: "promotional newsletters I got this week"
-        Output: to:me category:promotions after:{(datetime.utcnow() - timedelta(days=7)).strftime('%Y/%m/%d')}
 
         ---
 
         🔁 Now convert this user input into a Gmail search query:
         "{user_query}"
         """
-
 
         model = genai.GenerativeModel("gemini-2.0-flash")
         response = model.generate_content(
@@ -104,11 +72,40 @@ async def read_emails(request: Request):
         gmail_query = response.text.strip()
 
         if not gmail_query:
-            gmail_query = f'subject:({user_query}) OR body:({user_query})'
+            gmail_query = f'to:me subject:({user_query}) OR body:({user_query}) after:{today.strftime("%Y/%m/%d")} before:{tomorrow.strftime("%Y/%m/%d")}'
+
+        # fix parentheses around 'me', 'inbox', etc.
+        special_tokens = ['me', 'inbox', 'starred']
+        for token in special_tokens:
+            gmail_query = re.sub(rf'\({token}\)', token, gmail_query, flags=re.IGNORECASE)
 
         print("Gmail Query from Gemini:", gmail_query)
 
-        # Step 2: Gmail API call using the generated query
+        # 📥 Substitute contact names with their emails
+        contact_collection = get_contacts_collection()
+        all_contacts = await contact_collection.find({"user_id": ObjectId(user_id)}).to_list(length=100)
+
+        print("contacts found from database : ", all_contacts)
+
+        # Replace contact names with emails in Gmail query
+        for contact in all_contacts:
+            contact_name = contact["name"].lower()
+            contact_email = contact["email"]
+
+            # Full name
+            gmail_query = re.sub(rf'from:\(?{re.escape(contact_name)}\)?', f'from:{contact_email}', gmail_query, flags=re.IGNORECASE)
+            gmail_query = re.sub(rf'to:\(?{re.escape(contact_name)}\)?', f'to:{contact_email}', gmail_query, flags=re.IGNORECASE)
+
+            # Each part of name
+            for part in contact_name.split():
+                gmail_query = re.sub(rf'from:\(?{re.escape(part)}\)?', f'from:{contact_email}', gmail_query, flags=re.IGNORECASE)
+                gmail_query = re.sub(rf'to:\(?{re.escape(part)}\)?', f'to:{contact_email}', gmail_query, flags=re.IGNORECASE)
+
+        # ✅ Wrap OR queries in parentheses
+        gmail_query = re.sub(r'from:me to:([^\s]+) OR from:\1 to:me', r'(from:me to:\1) OR (from:\1 to:me)', gmail_query)
+
+        print("Final Gmail Query after contact substitution:", gmail_query)
+
 
         service = build('gmail', 'v1', credentials=creds)
         result = service.users().messages().list(userId='me', q=gmail_query).execute()
@@ -117,7 +114,6 @@ async def read_emails(request: Request):
         count_mails = 0
         email_summaries = []
 
-        # Step 3: Parse and format each email
         for msg in messages:
             count_mails += 1
             msg_data = service.users().messages().get(userId='me', id=msg['id'], format='full').execute()

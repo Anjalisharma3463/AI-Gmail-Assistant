@@ -55,6 +55,12 @@ async def read_emails(request: Request):
         - `after:{today.strftime('%Y/%m/%d')} before:{tomorrow.strftime('%Y/%m/%d')}`
         10. 💬 Use `is:unread` if query says unread
         11. ❌ Never include explanation — output only the final **Gmail query string**
+        12. 📎 For file/attachment related queries:
+        - Use `has:attachment`
+        - If user says “resume”, “assignment”, “report”, “slides”, etc:
+        → add `filename:assignment` or relevant word.
+        - Match partial names inside filenames, not exact only.
+
 
         ---
 

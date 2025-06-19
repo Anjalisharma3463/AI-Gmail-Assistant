@@ -47,13 +47,14 @@ async def read_emails(request: Request):
         3. ✅ If user says “they sent me”, “I received”, “I got”, use → `to:me`
         4. ✅ If user says “sent to [person/email]” → use: `to:[person] from:me`
         5. ✅ If user says “received from [person/email]” → use: `from:[person] to:me`
-        6. ❓ If sender/recipient is unclear → default to `to:me`
-        7. 🔁 For keyword-based searches use:
+        6. Ignore reply word and summary word in user query.
+        7. ❓ If sender/recipient is unclear → default to `to:me`
+        8. 🔁 For keyword-based searches use:
         - subject:keyword OR body:keyword
-        8. 🕐 For time-based queries like "today", use:
+        9. 🕐 For time-based queries like "today", use:
         - `after:{today.strftime('%Y/%m/%d')} before:{tomorrow.strftime('%Y/%m/%d')}`
-        9. 💬 Use `is:unread` if query says unread
-        10. ❌ Never include explanation — output only the final **Gmail query string**
+        10. 💬 Use `is:unread` if query says unread
+        11. ❌ Never include explanation — output only the final **Gmail query string**
 
         ---
 
@@ -81,6 +82,8 @@ async def read_emails(request: Request):
 
         print("Gmail Query from Gemini:", gmail_query)
 
+        matched = False  # move outside
+
         # ⛔️ Skip DB lookup if any email ID is already in the query
         if re.search(r'(from|to):\S+@\S+', gmail_query):
             print("Email address found in query — skipping contact substitution.")
@@ -90,28 +93,27 @@ async def read_emails(request: Request):
             all_contacts = await contact_collection.find({"user_id": ObjectId(user_id)}).to_list(length=100)
             print("Contacts found from database:", all_contacts)
 
-        matched = False
+            for contact in all_contacts:
+                contact_name = contact["name"].lower().strip()
+                contact_email = contact["email"]
 
-        for contact in all_contacts:
-            contact_name = contact["name"].lower().strip()
-            contact_email = contact["email"]
+                # Remove quotes from gmail_query for safer matching
+                gmail_query = gmail_query.replace('"', '')
 
-            # Remove quotes from gmail_query for safer matching
-            gmail_query = gmail_query.replace('"', '')
+                # Match full or partial name
+                if contact_name in gmail_query.lower() or any(part in gmail_query.lower() for part in contact_name.split()):
+                    matched = True
+                    for part in contact_name.split():
+                        gmail_query = re.sub(rf'(?<=from:)\s*{re.escape(part)}\b', contact_email, gmail_query, flags=re.IGNORECASE)
+                        gmail_query = re.sub(rf'(?<=to:)\s*{re.escape(part)}\b', contact_email, gmail_query, flags=re.IGNORECASE)
 
-            # Match full or partial name
-            if contact_name in gmail_query.lower() or any(part in gmail_query.lower() for part in contact_name.split()):
-                matched = True
-                for part in contact_name.split():
-                    gmail_query = re.sub(rf'(?<=from:)\s*{re.escape(part)}\b', contact_email, gmail_query, flags=re.IGNORECASE)
-                    gmail_query = re.sub(rf'(?<=to:)\s*{re.escape(part)}\b', contact_email, gmail_query, flags=re.IGNORECASE)
-
-            # Final check: if no name part matched at all
+            # 🛑 Only check for unmatched after loop inside else
             if not matched:
                 return JSONResponse(
                     content={"error": "Name not found in contacts. Please provide the email address of the person."},
                     status_code=400
                 )
+
 
         gmail_query = re.sub(r'from:me to:([^\s]+) OR from:\1 to:me', r'(from:me to:\1) OR (from:\1 to:me)', gmail_query)
 
@@ -123,13 +125,16 @@ async def read_emails(request: Request):
         messages = result.get('messages', [])
         count_mails = 0
         email_summaries = []
-
+        print("##All#messages", messages)
+        ##All#messages [{'id': '1976a04a085bb02d', 'threadId': '1976a04a085bb02d'}]
         for msg in messages:
             count_mails += 1
             msg_data = service.users().messages().get(userId='me', id=msg['id'], format='full').execute()
             payload = msg_data.get("payload", {})
             headers = payload.get("headers", [])
-
+            emailid = msg['id']
+            threadid = msg['threadId']
+            print("##msg_data", msg_data)
             subject = next((h['value'] for h in headers if h['name'] == 'Subject'), '')
             sender = next((h['value'] for h in headers if h['name'] == 'From'), '')
             date = next((h['value'] for h in headers if h['name'] == 'Date'), '')
@@ -155,7 +160,9 @@ async def read_emails(request: Request):
                 "subject": subject,
                 "date": date,
                 "snippet": snippet,
-                "body": body
+                "body": body,
+                "emailid": emailid,
+                "threadid": threadid
             })
 
         print(f"Total emails fetched: {count_mails}")

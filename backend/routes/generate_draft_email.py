@@ -14,10 +14,14 @@ router = APIRouter()
 async def generate_draft_email(request: Request):
     data = await request.json()
     user_prompt = data.get("prompt")
+    original_email = data.get("original_email")  # Optional original email content for replies
+    action = data.get("action", "new")  # "reply" or "new"
 
     user = request.state.user
     username = user["username"]
     user_id = user["user_id"]
+    print("original_email: ", original_email)
+    print("action: ", action)
 
     if not user_prompt:
         print("❌ Missing prompt in request.")
@@ -27,7 +31,6 @@ async def generate_draft_email(request: Request):
         import google.generativeai as genai
         genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-        # 📦 Extract optional character limit
         match = re.search(r"(?:in|within|of)\s+(\d{2,4})\s*characters", user_prompt.lower())
         char_limit = int(match.group(1)) if match else None
 
@@ -41,7 +44,12 @@ async def generate_draft_email(request: Request):
 
         print(f"\n🔍 Prompt sent to Gemini:\n{user_prompt}\n")
 
-        response = model.generate_content(f"""
+        original_email_instruction = (
+            f"\n\n6. If this is a reply, below is the original email you're replying to. Use it to personalize your tone and context:\n\n---\n{original_email['body']}\n---\n"
+            if action == "reply" and original_email else ""
+        )
+
+        full_prompt = f"""
         You are a smart and emotionally aware email writing assistant. The user may give vague instructions and may optionally request a specific email length (like "write in 200 characters").
 
         Your responsibilities:
@@ -56,7 +64,7 @@ async def generate_draft_email(request: Request):
 
         3. **Respond in this exact JSON format**:
         {{
-        "to": "",  
+        "to": "",
         "name": "Recipient name if available, else empty string",
         "subject": "a short, relevant subject line",
         "message": "email body with salutation, message, and closing"
@@ -72,15 +80,17 @@ async def generate_draft_email(request: Request):
             - "Take care," or "Cheers, {username}" for casual
 
         5. {character_instruction}
-
-        6. If contact info (phone, role) is in prompt, add at the end professionally — but never fabricate.
+        {original_email_instruction}
 
         ⚠️ Do NOT use placeholders like "someone@example.com".
         ⚠️ Output must be **pure JSON only**. No markdown, code blocks, or comments.
 
         User Prompt:
         \"\"\"{user_prompt}\"\"\"
-        """)
+        """
+
+        response = model.generate_content(full_prompt)
+
 
         gemini_response = response.text.strip()
         print("\n📨 Raw Gemini response:\n", gemini_response)
@@ -92,12 +102,18 @@ async def generate_draft_email(request: Request):
 
         recipient_name = email_data.get("name", "").strip()
         recipient_email = email_data.get("to", "").strip()
-
         print(f"\n👤 Extracted Name: {recipient_name}")
         print(f"📧 Extracted Email: {recipient_email if recipient_email else 'None'}")
 
+        if action == "reply":
+            original_email_id = original_email['emailid']
+            original_thread_id = original_email['threadid']
+            email_data["emailid"] = original_email_id
+            email_data["threadid"] = original_thread_id
+            print("📧 Original Email ID:", original_email_id)
+            print("📧 Original Thread ID:", original_thread_id)
+
         if not recipient_email:
-            # 🔍 Try to resolve from contacts DB using flexible regex
             contact_collection = get_contacts_collection()
             print(f"📡 Searching in DB: name ~ '{recipient_name}', user_id = {user_id}")
 
@@ -113,7 +129,7 @@ async def generate_draft_email(request: Request):
                 email_data["to"] = matching_contacts[0]["email"]
             else:
                 print("❌ No matching contact found. Fetching all contacts for user.")
-                all_contacts = await contact_collection.find({"user_id": user_id}).to_list(length=10)
+                all_contacts = await contact_collection.find({"user_id": ObjectId(user_id)}).to_list(length=10)
                 print("📄 All contacts for user:", all_contacts)
 
                 return JSONResponse(
@@ -126,7 +142,12 @@ async def generate_draft_email(request: Request):
         return JSONResponse(content={
             "status": "draft_generated",
             "character_limit": char_limit,
-            "email": email_data
+            "email": email_data,
+            "original_email_id": original_email_id if action == "reply" else None,
+            "original_thread_id": original_thread_id if action == "reply" else None,
+            "action": action,
+            "recipient_name": recipient_name,
+            "recipient_email": recipient_email
         })
 
     except Exception as e:

@@ -24,9 +24,10 @@ async def save_contact(request: Request):
     user_id = user["user_id"]
     logged_in_email = user["email"]
    
-    name = request.get("name")
-    email = request.get("email")
-
+    data = await request.json()
+    name = data.get("name")
+    email = data.get("email")
+    print("Received contact details:", name, email)
     print("Logged-in username:", username)
     print("Logged-in email:", logged_in_email)
     if not all([user_id, username, logged_in_email]):
@@ -37,6 +38,11 @@ async def save_contact(request: Request):
         "name": name,
         "email": email
     }
+
+    print("Saving contact:", new_contact)
+    if not name or not email:
+        print("❌ Missing name or email in request.")
+        return JSONResponse(content={"error": "Missing name or email"}, status_code=400)
 
     result = await contacts_collection.insert_one(new_contact)
 

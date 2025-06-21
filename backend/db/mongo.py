@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv(".env.production")
 MONGO_URL = os.getenv("MONGO_URI")
 client = AsyncIOMotorClient(MONGO_URL)
-db = client["AI-Gmail-Assitant-Database"]
+db = client["AI-Gmail-Assistant-Database"]
 
 def get_user_collection():
     return db["users"]

@@ -1,7 +1,8 @@
 import uvicorn
 import asyncio
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from backend.utils.dependencies import get_current_user
 from backend.routes import (
@@ -15,7 +16,20 @@ from backend.routes import (
     reply,
 )
 
-from scheduler.email_scheduler import send_scheduled_emails
+from scheduler.email_scheduler import send_scheduled_emails 
+import os
+from dotenv import load_dotenv
+from backend.routes import internal
+from backend.utils.internal_auth import verify_internal_api_key
+load_dotenv(".env.production")
+ 
+INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY")
+
+# ✅ Internal API key dependency
+def verify_internal_api_key(x_api_key: str = Header(...)):
+    if x_api_key != INTERNAL_API_KEY:
+        raise HTTPException(status_code=401, detail="Unauthorized access to internal route")
+    return True
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -23,7 +37,7 @@ app = FastAPI()
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for now; restrict in production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -34,11 +48,13 @@ app.add_middleware(
 async def start_scheduler():
     print("🚀 Scheduler task started on app startup")
     asyncio.create_task(send_scheduled_emails())
-
-# Health check route
+ 
 @app.get("/")
 def root():
     return {"message": "✅ Speakify backend running"}
+
+
+
 
 # Public router
 app.include_router(auth.router)
@@ -53,9 +69,10 @@ protected_routers = [
     contacts.router,
     reply.router,
 ]
-
 for router in protected_routers:
     app.include_router(router, dependencies=[Depends(get_current_user)])
+
+app.include_router(internal.router,  dependencies=[Depends(verify_internal_api_key)])
 
 # Dev entry point
 if __name__ == "__main__":

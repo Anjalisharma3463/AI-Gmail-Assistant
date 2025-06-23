@@ -3,6 +3,7 @@ from google.auth.transport.requests import Request as GoogleRequest
 from google.auth.exceptions import RefreshError
 from datetime import datetime
 from backend.db.mongo import get_user_collection
+from bson import ObjectId
 import os
 from dotenv import load_dotenv
 
@@ -10,14 +11,21 @@ load_dotenv(".env.production")
 
 user_collection = get_user_collection()
 
-async def get_valid_credentials(user_email: str):
-    db_user = await user_collection.find_one({"email": user_email})
+async def get_valid_credentials(user_id: str):
+    # ✅ Convert user_id to ObjectId
+    try:
+        object_id = ObjectId(user_id)
+    except Exception:
+        raise Exception("Invalid user ID format")
+
+    # 🔍 Fetch user from DB
+    db_user = await user_collection.find_one({"_id": object_id})
     if not db_user:
         raise Exception("User not found")
 
-    access_token = db_user["access_token"]
+    access_token = db_user.get("access_token")
     refresh_token = db_user.get("refresh_token")
-    token_expiry = db_user["token_expiry"]
+    token_expiry = db_user.get("token_expiry")
 
     if not refresh_token:
         raise Exception("No refresh token available. Please login again.")
@@ -30,14 +38,14 @@ async def get_valid_credentials(user_email: str):
         client_secret=os.getenv("GOOGLE_CLIENT_SECRET")
     )
 
-    # Refresh only if expired
+    # Refresh only if token is expired
     if datetime.utcnow() > datetime.fromisoformat(token_expiry):
         try:
-            print("Access token expired. Refreshing...")
+            print("🔁 Access token expired. Refreshing...")
             creds.refresh(GoogleRequest())
 
             await user_collection.update_one(
-                {"email": user_email},
+                {"_id": object_id},
                 {"$set": {
                     "access_token": creds.token,
                     "token_expiry": creds.expiry.isoformat()

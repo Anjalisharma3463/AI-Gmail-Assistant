@@ -15,12 +15,10 @@ async def send_email(request: Request):
         user = request.state.user
         user_email = user["email"]
         username = user["username"]
-
+        user_id = user["user_id"]
         # ✅ Get valid Google credentials (auto-refreshes if expired)
-        creds = await get_valid_credentials(user_email)
-        print('creds',creds)
-        data = await request.json()
-        print("Received data in /send_email in request :", data)
+        creds = await get_valid_credentials(user_id) 
+        data = await request.json() 
         to = data.get("to")
         subject = data.get("subject")
         message_text = data.get("message")

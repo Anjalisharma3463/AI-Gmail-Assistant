@@ -24,9 +24,7 @@ async def generate_draft_email(request: Request):
 
     user = request.state.user
     username = user["username"]
-    user_id = user["user_id"]
-    print("original_email: ", original_email)
-    print("action: ", action)
+    user_id = user["user_id"] 
 
     if not user_prompt:
         print("❌ Missing prompt in request.")
@@ -45,9 +43,7 @@ async def generate_draft_email(request: Request):
             else "- Write a short, concise professional email body."
         )
 
-        model = genai.GenerativeModel("gemini-2.0-flash")
-
-        print(f"\n🔍 Prompt sent to Gemini:\n{user_prompt}\n")
+        model = genai.GenerativeModel("gemini-2.0-flash") 
 
         original_email_instruction = (
             f"\n\n6. If this is a reply, below is the original email you're replying to. Use it to personalize your tone and context:\n\n---\n{original_email['body']}\n---\n"
@@ -97,8 +93,7 @@ async def generate_draft_email(request: Request):
         response = model.generate_content(full_prompt)
 
 
-        gemini_response = response.text.strip()
-        print("\n📨 Raw Gemini response:\n", gemini_response)
+        gemini_response = response.text.strip() 
 
         if gemini_response.startswith("```"):
             gemini_response = re.sub(r"^```json|^```|```$", "", gemini_response.strip(), flags=re.IGNORECASE).strip()
@@ -106,9 +101,7 @@ async def generate_draft_email(request: Request):
         email_data = json.loads(gemini_response)
 
         recipient_name = email_data.get("name", "").strip()
-        recipient_email = email_data.get("to", "").strip()
-        print(f"\n👤 Extracted Name: {recipient_name}")
-        print(f"📧 Extracted Email: {recipient_email if recipient_email else 'None'}")
+        recipient_email = email_data.get("to", "").strip() 
 
         # 🔍 Extract schedule time from prompt
         # Step 1: Ask Gemini to extract time expression
@@ -119,9 +112,7 @@ async def generate_draft_email(request: Request):
         """
 
         time_response = model.generate_content(time_extraction_prompt)
-        time_string = time_response.text.strip().replace("`", "").strip('"').strip()
-
-        print("🕒 Gemini Extracted Time String:", time_string)
+        time_string = time_response.text.strip().replace("`", "").strip('"').strip() 
 
         # Step 2: Use dateparser to parse it into datetime
         scheduled_time = dateparser.parse(time_string)
@@ -148,15 +139,14 @@ async def generate_draft_email(request: Request):
                     "subject": email_data["subject"],
                     "message": email_data["message"],
                     "name": email_data.get("name", ""),
-                    "emailid": email_data.get("emailid"),        # only if it's a reply
-                    "threadid": email_data.get("threadid")       # only if it's a reply
+                    "emailid": original_email.get("emailid"),        # only if it's a reply
+                    "threadid": original_email.get("threadid")       # only if it's a reply
                 },
                 "scheduled_time": scheduled_time,
                 "status": "pending"
             }
 
-            await scheduled_collection.insert_one(scheduled_email_doc)
-            print("📥 Scheduled email saved in correct format.")
+            await scheduled_collection.insert_one(scheduled_email_doc) 
 
 
 
@@ -164,9 +154,7 @@ async def generate_draft_email(request: Request):
             original_email_id = original_email['emailid']
             original_thread_id = original_email['threadid']
             email_data["emailid"] = original_email_id
-            email_data["threadid"] = original_thread_id
-            print("📧 Original Email ID:", original_email_id)
-            print("📧 Original Thread ID:", original_thread_id)
+            email_data["threadid"] = original_thread_id 
 
         if not recipient_email:
             contact_collection = get_contacts_collection()
@@ -176,23 +164,20 @@ async def generate_draft_email(request: Request):
                 "name": {"$regex": f".*{re.escape(recipient_name)}.*", "$options": "i"},
                 "user_id": ObjectId(user_id)
             })
-            matching_contacts = await contacts_cursor.to_list(length=5)
-            print("🔍 Matching Contacts:", matching_contacts)
+            matching_contacts = await contacts_cursor.to_list(length=5) 
 
             if matching_contacts:
                 print("✅ Contact match found.")
                 email_data["to"] = matching_contacts[0]["email"]
             else:
                 print("❌ No matching contact found. Fetching all contacts for user.")
-                all_contacts = await contact_collection.find({"user_id": ObjectId(user_id)}).to_list(length=10)
-                print("📄 All contacts for user:", all_contacts)
+                all_contacts = await contact_collection.find({"user_id": ObjectId(user_id)}).to_list(length=10) 
 
                 return JSONResponse(
                     content={"error": "Recipient email address is missing. Please provide a valid email."},
                     status_code=400
                 )
-
-        print("✅ Final Draft Email Data:", email_data)
+ 
 
         return JSONResponse(content={
             "status": "draft_generated",

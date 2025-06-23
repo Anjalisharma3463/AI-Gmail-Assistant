@@ -1,43 +1,47 @@
 import asyncio
 import httpx
-from datetime import datetime, timedelta, timezone
-import pytz  # Make sure pytz is installed
+from datetime import datetime, timezone
+import pytz
 from backend.db.mongo import get_scheduled_emails_collection
+import os
+from dotenv import load_dotenv
+
+load_dotenv(".env.production")
 
 BASE_URL = "http://localhost:8000"
 IST = pytz.timezone("Asia/Kolkata")
+headers = {"x-api-key": os.getenv("INTERNAL_API_KEY")}
 
 async def send_scheduled_emails():
     collection = get_scheduled_emails_collection()
 
     while True:
         try:
-            # Get current IST time
             now_utc = datetime.utcnow().replace(tzinfo=timezone.utc)
             now_ist = now_utc.astimezone(IST)
+ 
 
-            print("🔄 Checking for pending emails at IST:", now_ist)
-
-            # Query emails scheduled up to now (in IST)
             pending_emails = await collection.find({
                 "status": "pending",
                 "scheduled_time": {"$lte": now_ist.isoformat()}
             }).to_list(length=20)
+ 
 
-            print(f"📬 Found {len(pending_emails)} scheduled emails")
+            async with httpx.AsyncClient() as client:
+                for email_doc in pending_emails:
+                    action = email_doc["action"]
+                    email_payload = email_doc["email"]
+                    
+                    # ✅ Add user_id to payload so internal API can use it
+                    email_payload["user_id"] = str(email_doc["user_id"])
+ 
 
-            for email_doc in pending_emails:
-                action = email_doc["action"]
-                email_payload = email_doc["email"]
-
-                print("📨 Email payload:", email_payload)
-
-                async with httpx.AsyncClient() as client:
                     if action == "send":
-                        response = await client.post(f"{BASE_URL}/send_email", json=email_payload)
+                        response = await client.post(f"{BASE_URL}/internal/send_email", json=email_payload, headers=headers)
                     elif action == "reply":
-                        response = await client.post(f"{BASE_URL}/reply", json=email_payload)
+                        response = await client.post(f"{BASE_URL}/internal/reply", json=email_payload, headers=headers)
                     else:
+                        print(f"⚠️ Unknown action: {action}")
                         continue
 
                     if response.status_code == 200:
@@ -52,4 +56,4 @@ async def send_scheduled_emails():
         except Exception as e:
             print("❌ Scheduler error:", str(e))
 
-        await asyncio.sleep(60)  # Check every 60 seconds
+        await asyncio.sleep(60)

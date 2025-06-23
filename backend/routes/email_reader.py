@@ -27,8 +27,7 @@ async def read_emails(request: Request):
         user_email = user["email"]
         user_id = user["user_id"]
 
-        creds = await get_valid_credentials(user_email)
-        print('creds', creds)
+        creds = await get_valid_credentials(user_id)
 
         today = datetime.utcnow().date()
         tomorrow = today + timedelta(days=1)
@@ -84,9 +83,7 @@ async def read_emails(request: Request):
         # fix parentheses around 'me', 'inbox', etc.
         special_tokens = ['me', 'inbox', 'starred']
         for token in special_tokens:
-            gmail_query = re.sub(rf'\({token}\)', token, gmail_query, flags=re.IGNORECASE)
-
-        print("Gmail Query from Gemini:", gmail_query)
+            gmail_query = re.sub(rf'\({token}\)', token, gmail_query, flags=re.IGNORECASE) 
 
         matched = False  # move outside
 
@@ -96,9 +93,7 @@ async def read_emails(request: Request):
         else:
             # 📥 Substitute contact names with their emails
             contact_collection = get_contacts_collection()
-            all_contacts = await contact_collection.find({"user_id": ObjectId(user_id)}).to_list(length=100)
-            print("Contacts found from database:", all_contacts)
-
+            all_contacts = await contact_collection.find({"user_id": ObjectId(user_id)}).to_list(length=100) 
             for contact in all_contacts:
                 contact_name = contact["name"].lower().strip()
                 contact_email = contact["email"]
@@ -121,17 +116,14 @@ async def read_emails(request: Request):
                 )
 
 
-        gmail_query = re.sub(r'from:me to:([^\s]+) OR from:\1 to:me', r'(from:me to:\1) OR (from:\1 to:me)', gmail_query)
-
-        print("Final Gmail Query after contact substitution:", gmail_query)
+        gmail_query = re.sub(r'from:me to:([^\s]+) OR from:\1 to:me', r'(from:me to:\1) OR (from:\1 to:me)', gmail_query) 
 
         service = build('gmail', 'v1', credentials=creds)
         result = service.users().messages().list(userId='me', q=gmail_query).execute()
 
         messages = result.get('messages', [])
         count_mails = 0
-        email_summaries = []
-        print("##All#messages", messages)
+        email_summaries = [] 
         ##All#messages [{'id': '1976a04a085bb02d', 'threadId': '1976a04a085bb02d'}]
         for msg in messages:
             count_mails += 1
@@ -139,8 +131,7 @@ async def read_emails(request: Request):
             payload = msg_data.get("payload", {})
             headers = payload.get("headers", [])
             emailid = msg['id']
-            threadid = msg['threadId']
-            print("##msg_data", msg_data)
+            threadid = msg['threadId'] 
             subject = next((h['value'] for h in headers if h['name'] == 'Subject'), '')
             sender = next((h['value'] for h in headers if h['name'] == 'From'), '')
             date = next((h['value'] for h in headers if h['name'] == 'Date'), '')
@@ -170,10 +161,8 @@ async def read_emails(request: Request):
                 "emailid": emailid,
                 "threadid": threadid
             })
-
-        print(f"Total emails fetched: {count_mails}")
+ 
         return {"emails": email_summaries, "gmail_query": gmail_query}
 
-    except Exception as e:
-        print("Error in /read_emails:", str(e))
+    except Exception as e: 
         return JSONResponse(content={"error": str(e)}, status_code=500)

@@ -51,10 +51,10 @@ flow = Flow.from_client_config(
 )
 @router.get("/login")
 async def login():
-    # First-time login: Google will provide refresh_token if not previously granted
     auth_url, state = flow.authorization_url(
         access_type='offline',
-        include_granted_scopes='true'
+        include_granted_scopes='true',
+        prompt='consent'
     )
     return RedirectResponse(auth_url)
 
@@ -82,7 +82,7 @@ async def login_callback(request: Request):
             "username": username,
             "picture": picture,
             "access_token": credentials.token,
-            "refresh_token": credentials.refresh_token,  # May be None
+            "refresh_token": credentials.refresh_token,  
             "token_expiry": credentials.expiry.isoformat(),
             "has_refresh_token": bool(credentials.refresh_token)
         }

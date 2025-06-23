@@ -1,12 +1,12 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from typing import Optional
 
 class ContactCreate(BaseModel):
     name: str
-    email: EmailStr
+    email: str
 
 class ContactResponse(BaseModel):
     id: str
     name: str
-    email: EmailStr
+    email: str
     user_id: str

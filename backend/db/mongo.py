@@ -13,3 +13,6 @@ def get_user_collection():
 
 def get_contacts_collection():
     return db["contacts"]
+
+def get_scheduled_emails_collection():
+    return db["scheduled_emails"]

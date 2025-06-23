@@ -28,7 +28,6 @@ async def get_current_user(request: Request):
         if exp is None or datetime.utcnow().timestamp() > exp:
             raise HTTPException(status_code=401, detail="Token expired")
 
-        # You can return user_id or full payload here
         user = {
             "user_id": user_id,
             "email": email,

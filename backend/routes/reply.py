@@ -29,7 +29,7 @@ async def reply_to_email(request: Request):
     subject = data.get("subject")
     message_body = data.get("message")
     thread_id = data.get("thread_id")
-    msg_id = data.get("message_id")  # original message id for reply header
+    msg_id = data.get("message_id")   
 
     if not (to_email and subject and message_body and thread_id):
         return JSONResponse(content={"error": "Missing required fields"}, status_code=400)

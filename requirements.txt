@@ -2,6 +2,7 @@ aiomysql==0.1.1
 alembic==1.16.2
 annotated-types==0.7.0
 anyio==4.9.0
+APScheduler==3.11.0
 Authlib==1.6.0
 cachetools==5.5.2
 certifi==2025.4.26
@@ -9,6 +10,7 @@ cffi==1.17.1
 charset-normalizer==3.4.2
 click==8.1.8
 cryptography==45.0.4
+dateparser==1.2.1
 distro==1.9.0
 dnspython==2.7.0
 dynaconf==3.2.11
@@ -54,10 +56,13 @@ PyJWT==2.10.1
 pymongo==4.13.1
 PyMySQL==1.1.1
 pyparsing==3.2.3
+python-dateutil==2.9.0.post0
 python-dotenv==1.1.0
 python-jose==3.5.0
 python-multipart==0.0.20
 pyttsx3==2.98
+pytz==2025.2
+regex==2024.11.6
 requests==2.32.4
 requests-oauthlib==2.0.0
 rsa==4.9.1
@@ -69,6 +74,7 @@ starlette==0.27.0
 tqdm==4.67.1
 typing-inspection==0.4.1
 typing_extensions==4.14.0
+tzlocal==5.3.1
 uritemplate==4.2.0
 urllib3==2.4.0
 uvicorn==0.21.1

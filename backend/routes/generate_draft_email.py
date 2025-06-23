@@ -6,10 +6,15 @@ import json
 import re
 from dotenv import load_dotenv
 from bson import ObjectId
-
+from datetime import datetime
+import dateparser
 load_dotenv(".env.production")
 router = APIRouter()
 
+# using this route for sending new mail using /send_email
+# using this route for sending reply to a mail using /reply
+# using this route for saving a scheduled mail in database and will later use /send_email and /reply.
+ 
 @router.post("/generate_draft_email")
 async def generate_draft_email(request: Request):
     data = await request.json()
@@ -30,7 +35,7 @@ async def generate_draft_email(request: Request):
     try:
         import google.generativeai as genai
         genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-
+ 
         match = re.search(r"(?:in|within|of)\s+(\d{2,4})\s*characters", user_prompt.lower())
         char_limit = int(match.group(1)) if match else None
 
@@ -86,7 +91,7 @@ async def generate_draft_email(request: Request):
         ⚠️ Output must be **pure JSON only**. No markdown, code blocks, or comments.
 
         User Prompt:
-        \"\"\"{user_prompt}\"\"\"
+        {user_prompt} 
         """
 
         response = model.generate_content(full_prompt)
@@ -104,6 +109,56 @@ async def generate_draft_email(request: Request):
         recipient_email = email_data.get("to", "").strip()
         print(f"\n👤 Extracted Name: {recipient_name}")
         print(f"📧 Extracted Email: {recipient_email if recipient_email else 'None'}")
+
+        # 🔍 Extract schedule time from prompt
+        # Step 1: Ask Gemini to extract time expression
+        time_extraction_prompt = f"""
+        Extract only the datetime expression from this message. Don't explain anything.
+        User message: "{user_prompt}"
+        Respond with only the time phrase (like "tomorrow at 9am", "June 19th 6PM", etc), or "none" if no time is mentioned.
+        """
+
+        time_response = model.generate_content(time_extraction_prompt)
+        time_string = time_response.text.strip().replace("`", "").strip('"').strip()
+
+        print("🕒 Gemini Extracted Time String:", time_string)
+
+        # Step 2: Use dateparser to parse it into datetime
+        scheduled_time = dateparser.parse(time_string)
+
+        if scheduled_time:
+            now = datetime.utcnow()
+            if scheduled_time <= now:
+                return JSONResponse(content={"error": "Scheduled time must be in the future."}, status_code=400)
+            scheduled_time = scheduled_time.isoformat()
+            print("⏰ Final Parsed Scheduled Time:", scheduled_time)
+        else:
+            print("⚠️ Gemini didn't extract any valid time.")
+
+
+        if scheduled_time:
+            from backend.db.mongo import get_scheduled_emails_collection
+            scheduled_collection = get_scheduled_emails_collection()
+
+            scheduled_email_doc = {
+                "user_id": ObjectId(user_id),
+                "action": action,
+                "email": {
+                    "to": email_data["to"],
+                    "subject": email_data["subject"],
+                    "message": email_data["message"],
+                    "name": email_data.get("name", ""),
+                    "emailid": email_data.get("emailid"),        # only if it's a reply
+                    "threadid": email_data.get("threadid")       # only if it's a reply
+                },
+                "scheduled_time": scheduled_time,
+                "status": "pending"
+            }
+
+            await scheduled_collection.insert_one(scheduled_email_doc)
+            print("📥 Scheduled email saved in correct format.")
+
+
 
         if action == "reply":
             original_email_id = original_email['emailid']

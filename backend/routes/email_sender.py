@@ -20,6 +20,7 @@ async def send_email(request: Request):
         creds = await get_valid_credentials(user_email)
         print('creds',creds)
         data = await request.json()
+        print("Received data in /send_email in request :", data)
         to = data.get("to")
         subject = data.get("subject")
         message_text = data.get("message")

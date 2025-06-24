@@ -1,4 +1,4 @@
-# backend/utils/internal_auth.py
+# app/utils/internal_auth.py
 
 from fastapi import Header, HTTPException, Depends , Request, status
 import os

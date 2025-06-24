@@ -5,7 +5,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 
-from backend.utils.speak import speak_text
+from app.utils.speak import speak_text
 def listen_and_transcribe():
     r = sr.Recognizer()
     mic = sr.Microphone()

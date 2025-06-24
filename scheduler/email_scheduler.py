@@ -2,7 +2,7 @@ import asyncio
 import httpx
 from datetime import datetime, timezone
 import pytz
-from backend.db.mongo import get_scheduled_emails_collection
+from app.db.mongo import get_scheduled_emails_collection
 import os
 from dotenv import load_dotenv
 

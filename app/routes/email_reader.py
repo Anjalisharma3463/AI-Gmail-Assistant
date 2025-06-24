@@ -7,8 +7,8 @@ import os
 from dotenv import load_dotenv
 import google.generativeai as genai
 from datetime import datetime, timedelta
-from backend.utils.google_auth import get_valid_credentials
-from backend.db.mongo import get_contacts_collection
+from app.utils.google_auth import get_valid_credentials
+from app.db.mongo import get_contacts_collection
 import re
 from bson import ObjectId
 

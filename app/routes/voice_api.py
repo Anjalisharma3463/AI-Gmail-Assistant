@@ -3,8 +3,8 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-from backend.utils.listen import listen_and_transcribe
-from backend.utils.speak import speak_text
+from app.utils.listen import listen_and_transcribe
+from app.utils.speak import speak_text
 from fastapi import APIRouter, Request
 
 router = APIRouter()

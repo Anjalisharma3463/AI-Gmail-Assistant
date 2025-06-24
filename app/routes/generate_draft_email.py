@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
-from backend.db.mongo import get_contacts_collection
+from app.db.mongo import get_contacts_collection
 import os
 import json
 import re
@@ -128,7 +128,7 @@ async def generate_draft_email(request: Request):
 
 
         if scheduled_time:
-            from backend.db.mongo import get_scheduled_emails_collection
+            from app.db.mongo import get_scheduled_emails_collection
             scheduled_collection = get_scheduled_emails_collection()
 
             scheduled_email_doc = {

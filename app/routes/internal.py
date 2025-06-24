@@ -1,4 +1,4 @@
-# backend/routes/internal.py
+# app/routes/internal.py
 
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import JSONResponse
@@ -7,7 +7,7 @@ import base64
 from email.mime.text import MIMEText
 import os
 
-from backend.utils.google_auth import get_valid_credentials
+from app.utils.google_auth import get_valid_credentials
 
 router = APIRouter()
 

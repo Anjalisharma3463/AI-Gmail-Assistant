@@ -7,8 +7,8 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-from backend.db.mongo import get_contacts_collection, get_user_collection
- 
+from app.db.mongo import get_contacts_collection, get_user_collection
+  
 
 router = APIRouter()
 contacts_collection = get_contacts_collection()

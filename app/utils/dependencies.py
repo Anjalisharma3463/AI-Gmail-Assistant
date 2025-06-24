@@ -1,4 +1,4 @@
-# backend/utils/dependencies.py
+# app/utils/dependencies.py
 
 from fastapi import Request, HTTPException, Depends
 from jose import jwt, JWTError

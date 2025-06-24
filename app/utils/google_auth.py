@@ -2,7 +2,7 @@ from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request as GoogleRequest
 from google.auth.exceptions import RefreshError
 from datetime import datetime
-from backend.db.mongo import get_user_collection
+from app.db.mongo import get_user_collection
 from bson import ObjectId
 import os
 from dotenv import load_dotenv

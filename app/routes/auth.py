@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 load_dotenv(".env.production")
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
-from backend.db.mongo import get_user_collection
+from app.db.mongo import get_user_collection
 
 router = APIRouter()
 user_collection = get_user_collection()

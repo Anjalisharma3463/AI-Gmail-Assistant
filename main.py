@@ -4,8 +4,8 @@ from fastapi import FastAPI, Depends, Request, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from backend.utils.dependencies import get_current_user
-from backend.routes import (
+from app.utils.dependencies import get_current_user
+from app.routes import (
     auth,
     email_reader,
     summarizer,
@@ -19,8 +19,8 @@ from backend.routes import (
 from scheduler.email_scheduler import send_scheduled_emails 
 import os
 from dotenv import load_dotenv
-from backend.routes import internal
-from backend.utils.internal_auth import verify_internal_api_key
+from app.routes import internal
+from app.utils.internal_auth import verify_internal_api_key
 load_dotenv(".env.production")
  
 INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY")

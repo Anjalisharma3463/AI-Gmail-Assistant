@@ -5,7 +5,7 @@ import base64
 from email.mime.text import MIMEText
 
 # Import your token refresh utility
-from backend.utils.google_auth import get_valid_credentials
+from app.utils.google_auth import get_valid_credentials
 
 router = APIRouter()
 

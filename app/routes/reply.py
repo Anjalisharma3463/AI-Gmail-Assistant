@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
-from backend.utils.google_auth import get_valid_credentials
+from app.utils.google_auth import get_valid_credentials
 import base64
 import os
 import re

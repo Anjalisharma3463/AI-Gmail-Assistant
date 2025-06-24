@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 load_dotenv(".env.production")
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = os.getenv("BASE_URL")
 IST = pytz.timezone("Asia/Kolkata")
 headers = {"x-api-key": os.getenv("INTERNAL_API_KEY")}
 
@@ -32,7 +32,7 @@ async def send_scheduled_emails():
                     action = email_doc["action"]
                     email_payload = email_doc["email"]
                     
-                    # ✅ Add user_id to payload so internal API can use it
+                    #  Add user_id to payload so internal API can use it
                     email_payload["user_id"] = str(email_doc["user_id"])
  
 

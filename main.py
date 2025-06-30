@@ -3,7 +3,7 @@ import asyncio
 from fastapi import FastAPI, Depends, Request, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-
+ 
 from app.utils.dependencies import get_current_user
 from app.routes import (
     auth,
@@ -14,6 +14,7 @@ from app.routes import (
     generate_draft_email,
     contacts,
     reply,
+    classify_query,
 )
 
 from scheduler.email_scheduler import send_scheduled_emails 
@@ -68,6 +69,7 @@ protected_routers = [
     generate_draft_email.router,
     contacts.router,
     reply.router,
+    classify_query.router,
 ]
 for router in protected_routers:
     app.include_router(router, dependencies=[Depends(get_current_user)])

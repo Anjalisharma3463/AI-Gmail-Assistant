@@ -152,8 +152,8 @@ async def read_emails(request: Request):
 
             email_summaries.append({
                 "id": msg['id'],
-                "sender": sender,
-                "receiver": receiver,
+                "from": sender,
+                "to": receiver,
                 "subject": subject,
                 "date": date,
                 "snippet": snippet,

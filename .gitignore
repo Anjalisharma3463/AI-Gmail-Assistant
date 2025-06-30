@@ -22,7 +22,7 @@ __pycache__/
 # Temporary files
 *.tmp
 *.log
-
+agent/
 # OS generated files
 .DS_Store
 Thumbs.db

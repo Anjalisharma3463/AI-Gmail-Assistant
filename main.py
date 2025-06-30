@@ -13,8 +13,7 @@ from app.routes import (
     voice_api,
     generate_draft_email,
     contacts,
-    reply,
-    classify_query,
+    reply, 
 )
 
 from scheduler.email_scheduler import send_scheduled_emails 
@@ -68,8 +67,7 @@ protected_routers = [
     voice_api.router,
     generate_draft_email.router,
     contacts.router,
-    reply.router,
-    classify_query.router,
+    reply.router, 
 ]
 for router in protected_routers:
     app.include_router(router, dependencies=[Depends(get_current_user)])

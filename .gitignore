@@ -5,6 +5,7 @@ ENV/
 .venv/
 .pyenv/
 backend/.env
+agent
 backend/.env.local
 backend/env/
 backend/ENV/

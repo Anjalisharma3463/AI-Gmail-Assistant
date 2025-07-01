@@ -22,6 +22,7 @@ router = APIRouter()
 
 @router.post("/reply")
 async def reply_to_email(request: Request):
+    print("📨 /reply CALLED")
     data = await request.json()
     user = request.state.user
     user_email = user["email"]

@@ -16,6 +16,7 @@ router = APIRouter()
 @router.post("/internal/send_email")
 async def internal_send_email(request: Request):
     try:
+        print("📨 /internal/send_email CALLED")
         data = await request.json()
         user_email = data.get("user_email")
         username = data.get("username", "System")
@@ -55,6 +56,7 @@ async def internal_send_email(request: Request):
 @router.post("/internal/reply")
 async def internal_reply_email(request: Request):
     try:
+        print("📨 /internal/reply CALLED")
         data = await request.json()
         user_email = data.get("user_email")
         user_id = data.get("user_id")

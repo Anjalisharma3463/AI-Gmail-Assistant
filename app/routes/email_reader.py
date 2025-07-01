@@ -21,6 +21,7 @@ router = APIRouter()
 @router.post("/read_emails")
 async def read_emails(request: Request):
     try:
+        print("📨 /read_email CALLED")
         data = await request.json()
         user_query = data.get("user_query", "Find mails that talk about joining instructions or orientation from college")
         user = request.state.user
@@ -52,7 +53,7 @@ async def read_emails(request: Request):
         - subject:keyword OR body:keyword
         9. 🕐 For time-based queries like "today", use:
         - `after:{today.strftime('%Y/%m/%d')} before:{tomorrow.strftime('%Y/%m/%d')}`
-        10. 💬 Use `is:unread` if query says unread
+        10. 💬 Use `is:unread` if query says unread or missed from OR if query says last or latest then use `newer_than:1d`.
         11. ❌ Never include explanation — output only the final **Gmail query string**
         12. 📎 For file/attachment related queries:
         - Use `has:attachment`

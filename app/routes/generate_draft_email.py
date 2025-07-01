@@ -17,6 +17,8 @@ router = APIRouter()
  
 @router.post("/generate_draft_email")
 async def generate_draft_email(request: Request):
+    print("📨 /generate-draft-email CALLED")
+
     data = await request.json()
     user_prompt = data.get("prompt")
     original_email = data.get("original_email")  # Optional original email content for replies

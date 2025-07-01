@@ -9,6 +9,7 @@ agent
 backend/.env.local
 backend/env/
 backend/ENV/
+app/routes/agent_router.py
 # Ignore all env files by default
 .env*
 # But do NOT ignore .env.example

@@ -12,6 +12,7 @@ router = APIRouter()
 @router.post("/send_email")
 async def send_email(request: Request):
     try:
+        print("📨 /send_email CALLED")
         user = request.state.user
         user_email = user["email"]
         username = user["username"]

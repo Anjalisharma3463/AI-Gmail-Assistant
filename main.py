@@ -14,6 +14,9 @@ from app.routes import (
     generate_draft_email,
     contacts,
     reply, 
+    search_mails,
+    send_draft,
+    reply_draft
 )
 
 from scheduler.email_scheduler import send_scheduled_emails 
@@ -53,21 +56,22 @@ async def start_scheduler():
 def root():
     return {"message": "✅ Speakify backend running"}
 
-
-
-
+ 
 # Public router
 app.include_router(auth.router)
 
 # Protected routers (require JWT)
 protected_routers = [
-    email_reader.router,
+    # email_reader.router,
     summarizer.router,
     email_sender.router,
     voice_api.router,
-    generate_draft_email.router,
+    # generate_draft_email.router,
     contacts.router,
-    reply.router, 
+    reply.router,
+    search_mails.router,
+    send_draft.router,
+    reply_draft.router
 ]
 for router in protected_routers:
     app.include_router(router, dependencies=[Depends(get_current_user)])

@@ -15,6 +15,7 @@ router = APIRouter()
 @router.post("/summarize")
 async def summarize(request: Request):
     try:
+        print("📨 /summarize CALLED")
         user = request.state.user
         username = user["username"]
         logged_in_email = user["email"]

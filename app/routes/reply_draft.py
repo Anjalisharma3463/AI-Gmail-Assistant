@@ -11,7 +11,7 @@ async def reply_draft_route(request: Request):
     user = request.state.user
     try:
         if("original_email" not in data):
-            return JSONResponse(content={"error": " which mail you want to reply to?"}, status_code=400)
+            return JSONResponse(content={"error": "Missing required fields: 'original_email'."}, status_code=400)
         response = await generate_draft_email(user, data.get("user_query"), action="reply", original_email=data.get("original_email"))
         return JSONResponse(content=response)
     except Exception as e:
